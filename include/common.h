@@ -1,14 +1,16 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-using namespace std;
+#include <iostream>
+#include <string>
+#include <tuple>
 
 typedef int error;
 
-#define ok 0;
+#define ok 0
 
-void fatal(string msg, error err) {
-  cout << msg << endl;
+void fatal(std::string msg, error err) {
+  std::cout << msg << std::endl;
   exit(err);
 }
 

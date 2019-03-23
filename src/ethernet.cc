@@ -1,27 +1,26 @@
+#include <cstring>
+
+#include "ethernet.h"
+
 using namespace std;
 using namespace Ethernet;
 
 typedef struct __attribute__((packed)) {
   unsigned char destinationMac[6];
   unsigned char sourceMac[6];
-  uint16_t header;
+  char16_t header;
   unsigned char payload[];
 } rawPacket;
 
-Packet *Packet::Packet(unsigned char destinationMac[6],
-                       unsigned char sourceMac[6], uint16_t type,
-                       unsigned char payload[]) {
-  this.destinationMac = destinationMac;
-  this.sourceMac = sourceMac;
-  this.type = type;
-  this.payload = payload;
-};
-
-uint16_t Packet::GetType() { return this.type; }
+char16_t Packet::GetType() { return this->type; }
 
 // TODO: Pull out frame check sequence
-Packet *Parse(const unsigned char buffer[MAX_FRAME_LENGTH], int maxReadLength) {
-  struct rawPacket *pkt = (struct rawPacket *)buffer;
-  return new Packet(pkt->destinationMac, pkt->sourceMac, htons(pkt->header),
-                    pkt->payload);
+void Packet::Parse(const unsigned char buffer[MAX_FRAME_LENGTH],
+                   int maxReadLength) {
+  rawPacket *pkt = (rawPacket *)buffer;
+  memcpy(this->destinationMac, pkt->destinationMac,
+         sizeof(this->destinationMac));
+  memcpy(this->sourceMac, pkt->sourceMac, sizeof(this->sourceMac));
+  this->type = pkt->header;
+  memcpy(this->payload, pkt->payload, maxReadLength - 6 + 6 + 4);
 }

@@ -5,28 +5,28 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-  auto &[dev, err] = TapDevice::New();
-  if (err != 0) {
+  auto [dev, err] = TapDevice::New();
+  if (err != ok) {
     fatal("Failed to create tap device", err);
   }
 
-  err = dev.SetUp();
+  err = dev->SetUp();
   if (err != ok) {
     fatal("Failed to bring device up", err);
   }
 
-  err = dev.SetRoute("10.0.0.1");
+  err = dev->AddRoute("10.0.0.1");
   if (err != ok) {
     fatal("Failed to assign route", err);
   }
 
   Ethernet::Packet pkt;
-  while (err = dev.NextPacket(pkt); err == ok) {
+  while (dev->NextPacket(pkt) != ok) {
     switch (pkt.GetType()) {
     case Ethernet::ARP:
       cout << "Got ARP packet" << endl;
       break;
-    case ETHERNET::IP:
+    case Ethernet::IP:
       cout << "Got IP packet" << endl;
       break;
     default:
@@ -36,4 +36,6 @@ int main(int argc, char **argv) {
   }
 
   delete dev;
+
+  return 0;
 }

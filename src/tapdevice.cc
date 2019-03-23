@@ -3,23 +3,15 @@
 #include <linux/if_tun.h>
 #include <unistd.h>
 
+#include "tapdevice.h"
+
 using namespace std;
 using namespace TapDevice;
-
-TapDevice::TapDevice(int fd, string ifname) {
-  this.fd = fd;
-  this.ifname = ifname;
-}
-
-TapDevice::~TapDevice() {
-  close(fd);
-  this.removeRoute();
-}
 
 error TapDevice::setFlags(short flags) {
   error err;
   struct ifreq ifr;
-  strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+  strncpy(ifr.ifr_name, this.ifname, IFNAMSIZ);
 
   // Get current flags
   err = ioctl(fd, SIOCGIFFLAGS, &ifr);
@@ -75,7 +67,7 @@ error TapDevice::addRemoveRoute(string address, int cmd) {
   return ok;
 }
 
-tuple<ssize_t, error> TapDevice::NextPacket(Ethernet::Packet &pkt) {
+error TapDevice::NextPacket(Ethernet::Packet &pkt) {
   ssize_t c = read(this.fd, this.buffer, Ethernet::MAX_FRAME_LENGTH);
   if (c == -1) {
     return errno;
@@ -101,7 +93,7 @@ tuple<TapDevice *, error> New() {
 
   fd = open("/dev/net/tun", O_RDWR);
   if (fd < 0) {
-    return tuple<tapdevice, error>{0, fd};
+    return {0, fd};
   }
 
   // Ethernet layer with no additional packet information
@@ -110,10 +102,10 @@ tuple<TapDevice *, error> New() {
   err = ioctl(fd, TUNSETIFF, (void *)&ifr);
   if (err < 0) {
     close(fd);
-    return tuple<tapdevice, error>{0, err};
+    return {0, err};
   }
 
   string s;
   s.copy(ifr.ifr_name, 0, IFNAMSIZ);
-  return tuple<tapdevice, error>{new TapDevice(fd, s), 0};
+  return {new TapDevice(fd, s), 0};
 }
