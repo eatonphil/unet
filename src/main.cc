@@ -5,37 +5,34 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-  auto [dev, err] = TapDevice::New();
+  TapDevice::TapDevice dev;
+  error err = dev.Init();
   if (err != ok) {
-    fatal("Failed to create tap device", err);
-  }
-
-  err = dev->SetUp();
-  if (err != ok) {
-    fatal("Failed to bring device up", err);
-  }
-
-  err = dev->AddRoute("10.0.0.1");
-  if (err != ok) {
-    fatal("Failed to assign route", err);
+    fatal("Failed to create, bring up tap device", err);
   }
 
   Ethernet::Packet pkt;
-  while (dev->NextPacket(pkt) != ok) {
+  while (true) {
+    err = dev.ReadPacket(pkt);
+    if (err != ok) {
+      fatal("Failed while reading from fd", err);
+    }
+
+    char *payload = pkg.GetPayload();
+    char *response = Ethernet::MTU;
     switch (pkt.GetType()) {
-    case Ethernet::ARP:
-      cout << "Got ARP packet" << endl;
+    case Ethernet::ARP: {
+      ARP::Response r = ARP::HandleRequest(pkt.GetPayload());
       break;
+    }
     case Ethernet::IP:
-      cout << "Got IP packet" << endl;
+      log("Got IP packet");
       break;
     default:
-      cout << "Got unknown packet" << endl;
+      log("Got other packet");
       break;
     }
   }
-
-  delete dev;
 
   return 0;
 }

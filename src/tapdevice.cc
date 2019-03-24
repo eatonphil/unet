@@ -1,20 +1,18 @@
 #include <arpa/inet.h>
-#include <linux/if.h>
+#include <cstring>
 #include <linux/if_tun.h>
-#include <unistd.h>
+#include <linux/route.h>
+#include <sys/socket.h>
 
 #include "tapdevice.h"
 
 using namespace std;
-using namespace TapDevice;
 
-error TapDevice::setFlags(short flags) {
-  error err;
-  struct ifreq ifr;
-  strncpy(ifr.ifr_name, this.ifname, IFNAMSIZ);
+error TapDevice::TapDevice::setFlags(short flags) {
+  int sock = socket(AF_INET, SOCK_DGRAM, 0);
 
   // Get current flags
-  err = ioctl(fd, SIOCGIFFLAGS, &ifr);
+  error err = ioctl(sock, SIOCGIFFLAGS, &ifr);
   if (err == -1) {
     return errno;
   }
@@ -22,7 +20,8 @@ error TapDevice::setFlags(short flags) {
   ifr.ifr_flags |= flags;
 
   // Commit new flags
-  err = ioctl(fd, SIOCSIFFLAGS, &ifr);
+  err = ioctl(sock, SIOCSIFFLAGS, &ifr);
+  close(sock);
   if (err == -1) {
     return errno;
   }
@@ -30,36 +29,21 @@ error TapDevice::setFlags(short flags) {
   return ok;
 }
 
-error TapDevice::SetUp() { return this.setFlags(IFF_UP | IFF_RUNNING); }
-
-error TapDevice::addRemoveRoute(string address, int cmd) {
-  error err;
-  struct rtentry route;
-
-  // Clear out any garbage on the stack
-  memset(&route, 0, sizeof(route));
-
+error TapDevice::TapDevice::SetIP(string address) {
   // Set up address
-  addr = (struct sockaddr_in *)&route.rt_dst;
-  addr->sin_family = AF_INET;
-  inet_pton(AF_INET, address.c_str(), &addr->sin_addr.s_addr);
+  struct sockaddr_in addr = {};
+  addr.sin_family = AF_INET;
+  addr.sin_addr = {};
+  inet_pton(AF_INET, address.c_str(), &addr.sin_addr.s_addr);
 
-  // Set up gateway
-  addr = (struct sockaddr_in *)&route.rt_gateway;
-  addr->sin_family = AF_INET;
-  inet_pton(AF_INET, "0.0.0.0", &addr->sin_addry.s_addr);
+  // Add to request
+  memcpy(&this->ifr.ifr_addr, &addr, sizeof(struct sockaddr));
 
-  // Set up broadcast
-  addr = (struct sockaddr_in *)&route.rt_genmask;
-  addr->sin_family = AF_INET;
-  inet_pton(AF_INET, "255.255.255.0", &addr->sin_addry.s_addr);
+  int sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-  // Set route flags
-  route.rt_flags = RTF_UP | RTF_GATEWAY;
-  route.rt_metric = 100;
-
-  // Add or remove the route
-  err = ioctl(this.fd, cmd, &route);
+  // Add or remove the IP
+  error err = ioctl(sock, SIOCSIFADDR, &this->ifr);
+  close(sock);
   if (err == -1) {
     return errno;
   }
@@ -67,45 +51,36 @@ error TapDevice::addRemoveRoute(string address, int cmd) {
   return ok;
 }
 
-error TapDevice::NextPacket(Ethernet::Packet &pkt) {
-  ssize_t c = read(this.fd, this.buffer, Ethernet::MAX_FRAME_LENGTH);
-  if (c == -1) {
+error TapDevice::TapDevice::ReadPacket(Ethernet::Packet &pkt) {
+  ssize_t c = read(this->fd, this->buffer, Ethernet::MFU);
+  if (c == notok) {
     return errno;
   }
 
-  pkt.Parse(buffer, c);
+  pkt.Parse(this->buffer, c);
 
   return ok;
 }
 
-error TapDevice::RemoveRoute(string address) {
-  return this.addRemoveRoute(address, SIOCDELRT);
-}
-
-error TapDevice::AddRoute(string address) {
-  return this.addRemoveRoute(address, SIOCADDRT);
-}
-
-tuple<TapDevice *, error> New() {
-  struct ifreq ifr;
-  int fd;
-  error err;
-
-  fd = open("/dev/net/tun", O_RDWR);
-  if (fd < 0) {
-    return {0, fd};
+error TapDevice::TapDevice::Init() {
+  this->fd = open("/dev/net/tun", O_RDWR);
+  if (this->fd == notok) {
+    return errno;
   }
 
   // Ethernet layer with no additional packet information
-  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+  memset(&this->ifr, 0, sizeof(this->ifr));
+  this->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-  err = ioctl(fd, TUNSETIFF, (void *)&ifr);
-  if (err < 0) {
-    close(fd);
-    return {0, err};
+  error err = ioctl(this->fd, TUNSETIFF, &this->ifr);
+  if (err == notok) {
+    return errno;
   }
 
-  string s;
-  s.copy(ifr.ifr_name, 0, IFNAMSIZ);
-  return {new TapDevice(fd, s), 0};
+  // Set up and running
+  this->setFlags(IFF_UP | IFF_RUNNING);
+
+  log(this->ifr.ifr_name);
+
+  return ok;
 }

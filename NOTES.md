@@ -13,3 +13,5 @@ https://github.com/giftnuss/net-tools/blob/master/ifconfig.c
 https://www.ietf.org/rfc/rfc826.txt
 
 https://backreference.org/2010/03/26/tuntap-interface-tutorial/
+
+https://linuxgazette.net/149/misc/melinte/udptun.c

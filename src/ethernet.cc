@@ -1,4 +1,5 @@
 #include <cstring>
+#include <netinet/in.h>
 
 #include "ethernet.h"
 
@@ -15,12 +16,11 @@ typedef struct __attribute__((packed)) {
 char16_t Packet::GetType() { return this->type; }
 
 // TODO: Pull out frame check sequence
-void Packet::Parse(const unsigned char buffer[MAX_FRAME_LENGTH],
-                   int maxReadLength) {
+void Packet::Parse(char buffer[MFU], ssize_t maxReadLength) {
   rawPacket *pkt = (rawPacket *)buffer;
   memcpy(this->destinationMac, pkt->destinationMac,
          sizeof(this->destinationMac));
   memcpy(this->sourceMac, pkt->sourceMac, sizeof(this->sourceMac));
-  this->type = pkt->header;
+  this->type = htons(pkt->header);
   memcpy(this->payload, pkt->payload, maxReadLength - 6 + 6 + 4);
 }

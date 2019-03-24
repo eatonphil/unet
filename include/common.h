@@ -8,8 +8,11 @@
 typedef int error;
 
 #define ok 0
+#define notok -1
 
-void fatal(std::string msg, error err) {
+inline void log(std::string msg) { std::cout << msg << std::endl; }
+
+inline void fatal(std::string msg, error err) {
   std::cout << msg << std::endl;
   exit(err);
 }

@@ -17,11 +17,12 @@ private:
 public:
   char16_t GetType();
 
-  void Parse(const unsigned char *buffer, int n);
+  void Parse(char *buffer, ssize_t n);
 };
 
+const ssize_t MTU = 1500;
 // (6byte dest + 6byte src + 2byte type + 4byte CRC) + 46-1500bytes of data.
-const int MAX_FRAME_LENGTH = 1518;
+const ssize_t MFU = 1518;
 
 const int ARP = ETH_P_ARP;
 const int IP = ETH_P_IP;

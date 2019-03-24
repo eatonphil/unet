@@ -4,4 +4,4 @@ bin/unet: src/*.cc include/*.h
 
 dev:
 	docker build -t unet .
-	docker run -it -v ${CURDIR}:/unet unet sh
+	docker run -it --cap-add=NET_ADMIN -v ${CURDIR}:/unet unet sh
