@@ -22,8 +22,8 @@ typedef struct __attribute__((packed)) {
 } rawPacket;
 
 error maccpy(uint8_t buffer[6], string mac) {
-  if (sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &buffer[0],
-             &buffer[1], &buffer[2], &buffer[3], &buffer[4], &buffer[5]) != 6) {
+  if (sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &buffer[5],
+             &buffer[4], &buffer[3], &buffer[2], &buffer[1], &buffer[0]) != 6) {
     return notok;
   }
 

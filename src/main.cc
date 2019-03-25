@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
 
     switch (pkt->GetType()) {
     case Ethernet::ARP: {
+      log("[INFO] Handling ARP request");
       auto handled = ARP::HandleRequest(pkt, "10.0.0.4", "00:4f:33:03:ee:67");
       rsp = std::get<0>(handled);
       reqSize = std::get<1>(handled);
