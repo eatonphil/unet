@@ -21,9 +21,8 @@ private:
 public:
   ~TapDevice() { close(this->fd); }
   error Init();
-  std::tuple<std::shared_ptr<Ethernet::Packet>, error> ReadPacket();
-  error WritePacket(std::shared_ptr<Ethernet::Packet> pkt,
-                    std::vector<uint8_t> rsp);
+  std::tuple<Ethernet::Packet, error> ReadPacket();
+  error WritePacket(Ethernet::Packet pkt, std::vector<uint8_t> rsp);
 };
 
 std::tuple<TapDevice *, error> New();

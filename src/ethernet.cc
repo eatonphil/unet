@@ -98,6 +98,4 @@ ssize_t Ethernet::Packet::Serialize(uint8_t buffer[MFU]) {
 }
 
 // TODO: validate CRC
-error Ethernet::Validate(shared_ptr<Packet> pkt, ssize_t payloadSize) {
-  return ok;
-}
+error Ethernet::Validate(Packet pkt, ssize_t payloadSize) { return ok; }

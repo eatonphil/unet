@@ -33,7 +33,7 @@ public:
   ssize_t Serialize(uint8_t buffer[MFU]);
 };
 
-error Validate(std::shared_ptr<Packet> pkt, ssize_t payloadSize);
+error Validate(Packet pkt, ssize_t payloadSize);
 } // namespace Ethernet
 
 #endif

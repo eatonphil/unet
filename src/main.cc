@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     fatal("Failed to create, bring up tap device", err);
   }
 
-  std::shared_ptr<Ethernet::Packet> pkt;
+  Ethernet::Packet pkt;
   std::vector<uint8_t> rsp;
   ssize_t reqSize;
   while (true) {
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
       fatal("Failed while reading packet", err);
     }
 
-    switch (pkt->GetType()) {
+    switch (pkt.GetType()) {
     case Ethernet::ARP: {
       log("[INFO] Handling ARP request");
       auto handled = ARP::HandleRequest(pkt, "10.0.0.4", "00:4f:33:03:ee:67");

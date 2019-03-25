@@ -29,27 +29,27 @@ error TapDevice::TapDevice::setFlags(short flags) {
   return ok;
 }
 
-tuple<shared_ptr<Ethernet::Packet>, error> TapDevice::TapDevice::ReadPacket() {
-  shared_ptr<Ethernet::Packet> pkt = make_shared<Ethernet::Packet>();
+tuple<Ethernet::Packet, error> TapDevice::TapDevice::ReadPacket() {
+  Ethernet::Packet pkt;
   uint8_t buffer[Ethernet::MFU];
   ssize_t c = read(this->fd, buffer, sizeof(buffer));
   if (c == notok) {
     return {pkt, errno};
   }
 
-  pkt->Deserialize(buffer, c);
+  pkt.Deserialize(buffer, c);
 
   return {pkt, ok};
 }
 
-error TapDevice::TapDevice::WritePacket(shared_ptr<Ethernet::Packet> pkt,
+error TapDevice::TapDevice::WritePacket(Ethernet::Packet pkt,
                                         vector<uint8_t> rsp) {
   uint8_t buffer[Ethernet::MFU];
   size_t payloadSize = 0, totalSize = 0;
   while (rsp.size()) {
-    payloadSize = pkt->SetPayload(rsp);
+    payloadSize = pkt.SetPayload(rsp);
 
-    totalSize = pkt->Serialize(buffer);
+    totalSize = pkt.Serialize(buffer);
     ssize_t c = write(this->fd, buffer, totalSize);
     if (c == notok) {
       return errno;

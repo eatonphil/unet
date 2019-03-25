@@ -31,15 +31,14 @@ error maccpy(uint8_t buffer[6], string mac) {
 }
 
 tuple<vector<uint8_t>, ssize_t, error>
-ARP::HandleRequest(shared_ptr<Ethernet::Packet> ethernetPkt, string address,
-                   string mac) {
+ARP::HandleRequest(Ethernet::Packet ethernetPkt, string address, string mac) {
   vector<uint8_t> response;
 
   // TODO: this is dynamic if not hard-coded to Ethernet style and IPv4
   ssize_t reqSize = sizeof(rawPacket);
 
   // Read request into rawPacket
-  vector<uint8_t> payload = ethernetPkt->GetPayload();
+  vector<uint8_t> payload = ethernetPkt.GetPayload();
   rawPacket *pkt = (rawPacket *)(&payload[0]);
   pkt->opcode = htons(pkt->opcode);
 
