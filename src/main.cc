@@ -1,3 +1,4 @@
+#include "arp.h"
 #include "common.h"
 #include "ethernet.h"
 #include "tapdevice.h"
@@ -11,26 +12,42 @@ int main(int argc, char **argv) {
     fatal("Failed to create, bring up tap device", err);
   }
 
-  Ethernet::Packet pkt;
+  std::shared_ptr<Ethernet::Packet> pkt;
+  std::vector<uint8_t> rsp;
+  ssize_t reqSize;
   while (true) {
-    err = dev.ReadPacket(pkt);
+    auto t = dev.ReadPacket();
+    pkt = std::move(std::get<0>(t));
+    err = std::get<1>(t);
     if (err != ok) {
-      fatal("Failed while reading from fd", err);
+      fatal("Failed while reading packet", err);
     }
 
-    char *payload = pkg.GetPayload();
-    char *response = Ethernet::MTU;
-    switch (pkt.GetType()) {
+    switch (pkt->GetType()) {
     case Ethernet::ARP: {
-      ARP::Response r = ARP::HandleRequest(pkt.GetPayload());
+      auto handled = ARP::HandleRequest(pkt, "10.0.0.4", "00:4f:33:03:ee:67");
+      rsp = std::get<0>(handled);
+      reqSize = std::get<1>(handled);
+      err = std::get<2>(handled);
+      if (err != ok) {
+        fatal("Error while handling ARP packet", err);
+      }
       break;
     }
-    case Ethernet::IP:
-      log("Got IP packet");
-      break;
     default:
-      log("Got other packet");
-      break;
+      log("[INFO] Unrecognized packet type");
+      continue;
+    }
+
+    err = Ethernet::Validate(pkt, reqSize);
+    if (err != ok) {
+      log("[INFO] Invalid packet");
+      continue;
+    }
+
+    err = dev.WritePacket(pkt, rsp);
+    if (err != ok) {
+      fatal("Error while writing packet", err);
     }
   }
 

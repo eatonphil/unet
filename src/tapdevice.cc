@@ -29,36 +29,34 @@ error TapDevice::TapDevice::setFlags(short flags) {
   return ok;
 }
 
-error TapDevice::TapDevice::SetIP(string address) {
-  // Set up address
-  struct sockaddr_in addr = {};
-  addr.sin_family = AF_INET;
-  addr.sin_addr = {};
-  inet_pton(AF_INET, address.c_str(), &addr.sin_addr.s_addr);
-
-  // Add to request
-  memcpy(&this->ifr.ifr_addr, &addr, sizeof(struct sockaddr));
-
-  int sock = socket(AF_INET, SOCK_DGRAM, 0);
-
-  // Add or remove the IP
-  error err = ioctl(sock, SIOCSIFADDR, &this->ifr);
-  close(sock);
-  if (err == -1) {
-    return errno;
+tuple<shared_ptr<Ethernet::Packet>, error> TapDevice::TapDevice::ReadPacket() {
+  shared_ptr<Ethernet::Packet> pkt = make_shared<Ethernet::Packet>();
+  uint8_t buffer[Ethernet::MFU];
+  ssize_t c = read(this->fd, buffer, sizeof(buffer));
+  if (c == notok) {
+    return {pkt, errno};
   }
 
-  return ok;
+  pkt->Deserialize(buffer, c);
+
+  return {pkt, ok};
 }
 
-error TapDevice::TapDevice::ReadPacket(Ethernet::Packet &pkt) {
-  ssize_t c = read(this->fd, this->buffer, Ethernet::MFU);
-  if (c == notok) {
-    return errno;
+error TapDevice::TapDevice::WritePacket(shared_ptr<Ethernet::Packet> pkt,
+                                        vector<uint8_t> rsp) {
+  uint8_t buffer[Ethernet::MFU];
+  size_t payloadSize = 0, totalSize = 0;
+  while (rsp.size()) {
+    payloadSize = pkt->SetPayload(rsp);
+
+    totalSize = pkt->Serialize(buffer);
+    ssize_t c = write(this->fd, buffer, totalSize);
+    if (c == notok) {
+      return errno;
+    }
+
+    rsp.erase(rsp.begin(), rsp.begin() + MIN(rsp.size(), payloadSize));
   }
-
-  pkt.Parse(this->buffer, c);
-
   return ok;
 }
 
@@ -79,8 +77,6 @@ error TapDevice::TapDevice::Init() {
 
   // Set up and running
   this->setFlags(IFF_UP | IFF_RUNNING);
-
-  log(this->ifr.ifr_name);
 
   return ok;
 }

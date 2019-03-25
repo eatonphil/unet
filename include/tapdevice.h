@@ -5,7 +5,6 @@
 #include <linux/if.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -16,15 +15,15 @@ class TapDevice {
 private:
   int fd;
   ifreq ifr;
-  char buffer[Ethernet::MFU];
 
   error setFlags(short flags);
 
 public:
   ~TapDevice() { close(this->fd); }
   error Init();
-  error ReadPacket(Ethernet::Packet &pkt);
-  error SetIP(std::string address);
+  std::tuple<std::shared_ptr<Ethernet::Packet>, error> ReadPacket();
+  error WritePacket(std::shared_ptr<Ethernet::Packet> pkt,
+                    std::vector<uint8_t> rsp);
 };
 
 std::tuple<TapDevice *, error> New();

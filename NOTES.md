@@ -15,3 +15,9 @@ https://www.ietf.org/rfc/rfc826.txt
 https://backreference.org/2010/03/26/tuntap-interface-tutorial/
 
 https://linuxgazette.net/149/misc/melinte/udptun.c
+
+ARP:
+
+https://www-sop.inria.fr/members/Vincenzo.Mancuso/ReteInternet/09_arp.pdf
+
+http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
