@@ -29,7 +29,7 @@ error TapDevice::TapDevice::setFlags(short flags) {
   return ok;
 }
 
-tuple<Ethernet::Packet, error> TapDevice::TapDevice::ReadPacket() {
+tuple<Ethernet::Packet, error> TapDevice::TapDevice::readPacket() {
   Ethernet::Packet pkt;
   uint8_t buffer[Ethernet::MFU];
   ssize_t c = read(this->fd, buffer, sizeof(buffer));
@@ -42,7 +42,7 @@ tuple<Ethernet::Packet, error> TapDevice::TapDevice::ReadPacket() {
   return {pkt, ok};
 }
 
-error TapDevice::TapDevice::WritePacket(Ethernet::Packet pkt,
+error TapDevice::TapDevice::writePacket(Ethernet::Packet pkt,
                                         vector<uint8_t> rsp) {
   uint8_t buffer[Ethernet::MFU];
   size_t payloadSize = 0, totalSize = 0;
@@ -79,4 +79,64 @@ error TapDevice::TapDevice::Init() {
   this->setFlags(IFF_UP | IFF_RUNNING);
 
   return ok;
+}
+
+TapDevice::TapDevice::HandleRequests() {
+  Ethernet::Packet pkt;
+  std::vector<uint8_t> rsp;
+  ssize_t reqSize;
+  while (true) {
+    auto t = this->readPacket();
+    pkt = std::move(std::get<0>(t));
+    err = std::get<1>(t);
+    if (err != ok) {
+      fatal("Failed while reading packet", err);
+    }
+
+    switch (pkt.GetType()) {
+    case Ethernet::IPv4: {
+      log("[INFO] Handling IPv4 packet");
+      auto handled = IPV4::HandleRequest(pkt);
+      rsp = std::get<0>(handled);
+      reqSize = std::get<1>(handled);
+      err = std::get<2>(handled);
+      if (err != ok) {
+        fatal("Error while handling IPv4 packet", err);
+      }
+      break;
+    }
+    default:
+      log("[INFO] Unrecognized packet type");
+      continue;
+    }
+
+    err = Ethernet::Validate(pkt, reqSize);
+    if (err != ok) {
+      log("[INFO] Invalid packet");
+      continue;
+    }
+
+    err = this->writePacket(pkt, mac, rsp);
+    if (err != ok) {
+      fatal("Error while writing packet", err);
+    }
+  }
+}
+
+TapDevice::TapDevice::SetIPv4Address(uint8_t p0, uint8_t p1, uint8_t p2,
+                                     uint8_t p3) {
+  this->ipv4[0] = p0;
+  this->ipv4[1] = p1;
+  this->ipv4[2] = p2;
+  this->ipv4[3] = p3;
+}
+
+TapDevice::TapDevice::SetHardwareAddress(uint8_t p0, uint8_t p1, uint8_t p2,
+                                         uint8_t p3, uint8_t p4, uint8_t p5) {
+  this->mac[0] = p0;
+  this->mac[1] = p1;
+  this->mac[2] = p2;
+  this->mac[3] = p3;
+  this->mac[4] = p4;
+  this->mac[5] = p5;
 }

@@ -7,7 +7,7 @@ using namespace std;
 typedef struct __attribute__((packed)) {
   uint8_t destinationMac[6];
   uint8_t sourceMac[6];
-  char16_t header;
+  uint16_t header;
   uint8_t payload[Ethernet::MTU];
 } rawPacket;
 
@@ -43,7 +43,7 @@ uint32_t CRC(uint8_t *message, ssize_t size) {
   return reverse(~crc);
 }
 
-char16_t Ethernet::Packet::GetType() { return this->type; }
+uint16_t Ethernet::Packet::GetType() { return this->type; }
 
 vector<uint8_t> Ethernet::Packet::GetPayload() {
   vector<uint8_t> p(this->payload, this->payload + this->packetSize - OVERHEAD);
@@ -61,7 +61,7 @@ ssize_t Ethernet::Packet::SetPayload(vector<uint8_t> payload) {
     size = MTU;
   }
 
-  COPY(this->payload, size, payload)
+  memcpy(this->payload, payload.data(), size);
 
   this->packetSize = size + OVERHEAD;
 
@@ -71,11 +71,12 @@ ssize_t Ethernet::Packet::SetPayload(vector<uint8_t> payload) {
 void Ethernet::Packet::Deserialize(const uint8_t buffer[MFU],
                                    ssize_t packetSize) {
   const rawPacket *pkt = (rawPacket *)buffer;
-  COPY(this->destinationMac, sizeof(this->destinationMac), pkt->destinationMac)
-  COPY(this->sourceMac, sizeof(this->sourceMac), pkt->sourceMac)
+  memcpy(this->destinationMac, pkt->destinationMac,
+         sizeof(this->destinationMac));
+  memcpy(this->sourceMac, pkt->sourceMac, sizeof(this->sourceMac));
   this->type = htons(pkt->header);
   this->packetSize = packetSize;
-  COPY(this->payload, packetSize - OVERHEAD, pkt->payload)
+  memcpy(this->payload, pkt->payload, packetSize - OVERHEAD);
 }
 
 ssize_t Ethernet::Packet::Serialize(uint8_t buffer[MFU]) {
@@ -84,15 +85,20 @@ ssize_t Ethernet::Packet::Serialize(uint8_t buffer[MFU]) {
 
   // Copy internal data to pkt
   pkt.header = ntohs(this->type);
-  COPY(pkt.destinationMac, sizeof(this->destinationMac), this->destinationMac)
-  COPY(pkt.sourceMac, sizeof(this->sourceMac), this->sourceMac)
-  COPY(pkt.payload, s - OVERHEAD, this->payload);
+  // Destination is now the source of the original packet
+  memcpy(pkt.destinationMac, this->sourceMac, 6);
+  // Source is now the current device's mac address
+  memcpy(pkt.sourceMac, this->destinationMac, 6);
+  memcpy(pkt.payload, this->payload, s - OVERHEAD);
 
   // Copy into output buffer
-  COPY(buffer, s, ((uint8_t *)&pkt));
+  memcpy(buffer, &pkt, s);
 
   // Write CRC to buffer
-  buffer[s - Ethernet::CRC_SIZE] = CRC(buffer, s - Ethernet::CRC_SIZE);
+  uint32_t crc = htons(CRC(buffer, s - Ethernet::CRC_SIZE));
+  uint8_t crcBytes[4];
+  memcpy(crcBytes, &crc, Ethernet::CRC_SIZE);
+  memcpy(buffer + s - Ethernet::CRC_SIZE, crcBytes, Ethernet::CRC_SIZE);
 
   return s;
 }
